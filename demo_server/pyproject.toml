@@ -1,5 +1,5 @@
 [project]
-name = "expense-tracker"
+name = "demo-server"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
