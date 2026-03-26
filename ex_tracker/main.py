@@ -1,9 +1,14 @@
 import sqlite3
 from mcp.server.fastmcp import FastMCP
+import os
 
 mcp=FastMCP("ex-tracker")
 
-conn=sqlite3.connect("expenses.db",check_same_thread=False)
+BASE_DIR=os.path.dirname(os.path.abspath(__file__))
+DB_PATH=os.path.join(BASE_DIR,"expenses.db")
+
+
+conn=sqlite3.connect(DB_PATH,check_same_thread=False)
 
 cursor=conn.cursor()
 
