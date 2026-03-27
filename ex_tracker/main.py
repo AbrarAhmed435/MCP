@@ -59,5 +59,101 @@ def mcp_total_expense()->float:
 
     return result if result else 0.0
 
+
+@mcp.tool()
+def get_expenses_by_category(category:str)->float:
+    """
+    Get total expense for a specific category.
+
+    Args:
+        category: Expense category (e.g., food, travel)
+
+    Returns:
+        Total expense for that category
+    """
+    cursor.execute(
+        "SELECT SUM(price) FROM expenses WHERE LOWER(category)=LOWER(?)",
+        (category,)
+    )
+    result=cursor.fetchone()[0]
+    return result if result else 0.0
+
+
+@mcp.tool()
+def get_expense_breakdown_by_category()->dict:
+    """
+    Get total expenses grouped by category
+    Returns
+     Dictionary with category as key and total expense as value
+    """
+    cursor.execute(
+        "SELECT category, SUM(price) FROM expenses GROUP BY LOWER (category)"
+    )
+    rows=cursor.fetchall()
+    result={}
+
+    for row in rows:
+        result[row[0]]=row[1]
+    
+    return result
+
+
+# @mcp.tool()
+# def get_expenses_by_date_range(start_date:str,end_date:str)->float:
+#     """
+#     Get total expenses bw two dates,
+#     Args:
+#         start_date:Start date(YYYY-MM-DD)
+#         end_date:End date(YYYY-MM-DD)
+#     Returns:
+#         Total expense in that range
+#     """
+#     cursor.execute(
+#         """
+#         SELECT SUM(price)
+#         FROM expenses
+#         WHERE date BETWEEN ? AND ?
+#         """,
+#         (start_date,end_date,)
+#     )
+
+#     result=cursor.fetchone()[0]
+    
+#     return result if result else 0.0
+
+
+@mcp.tool()
+def get_category_breakdown_by_date_range(start_date: str, end_date: str) -> dict:
+    """
+    Get category-wise expense breakdown within a date range.
+
+    Args:
+        start_date: Start date (YYYY-MM-DD)
+        end_date: End date (YYYY-MM-DD)
+
+    Returns:
+        Dictionary with category as key and total expense as value
+    """
+    cursor.execute(
+        """
+        SELECT category, SUM(price)
+        FROM expenses
+        WHERE date BETWEEN ? AND ?
+        GROUP BY LOWER(category)
+        """,
+        (start_date, end_date)
+    )
+
+    rows = cursor.fetchall()
+    result={}
+    for row in rows:
+        result[row[0]]=row[1]
+
+    total_expense=0
+    for a,b in result.items():
+        total_expense+=b
+
+    return result,total_expense
+
 if __name__ == "__main__":
     mcp.run()
