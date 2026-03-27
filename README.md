@@ -91,8 +91,13 @@ nano ~/.config/Claude/claude_desktop_config.json
 ---
 
 ### 2️⃣ Add this inside "mcpServers"
+```
 
 ```
+uv run mcp install main.py
+```
+OR
+
 "ex-tracker": {
   "command": "/home/<your-username>/.local/bin/uv",
   "args": [
