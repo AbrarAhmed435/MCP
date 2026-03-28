@@ -20,13 +20,19 @@ CREATE TABLE IF NOT EXISTS expenses(
                price REAL NOT NULL               
 )
 """)
+cursor.execute("PRAGMA table_info(expenses)")
+columns = [col[1] for col in cursor.fetchall()]
+
+if "subcategory" not in columns:
+    cursor.execute("ALTER TABLE expenses ADD COLUMN subcategory TEXT")
+    conn.commit()
 conn.commit()
 
 
 
 
 @mcp.tool()
-def add_expense(date: str, category:str,price:float)->str:
+def add_expense(date: str, category:str,subcategory:str,price:float)->str:
     """
     Add a new expense entry . 
     Args:
@@ -40,8 +46,8 @@ def add_expense(date: str, category:str,price:float)->str:
     if price<=0:
         raise ValueError("Price must be positive")
     cursor.execute(
-        "INSERT INTO expenses (date, category, price) VALUES (?,?,?)",
-        (date,category,price)
+        "INSERT INTO expenses (date, category,subcategory, price) VALUES (?,?,?,?)",
+        (date,category,subcategory,price)
     )
     conn.commit()
     return "Expense added successfully"
@@ -73,29 +79,119 @@ def get_expenses_by_category(category:str)->float:
     """
     cursor.execute(
         "SELECT SUM(price) FROM expenses WHERE LOWER(category)=LOWER(?)",
-        (category,)
+        (f"%(category)%",)
     )
     result=cursor.fetchone()[0]
     return result if result else 0.0
 
 
+# @mcp.tool()
+# def get_expense_breakdown_by_category()->dict:
+#     """
+#     Get total expenses grouped by category
+#     Returns
+#      Dictionary with category as key and total expense as value
+#     """
+#     cursor.execute(
+#         "SELECT category,subcategory,SUM(price) FROM expenses GROUP BY LOWER (category), LOWER(subcategory)"
+#     )
+#     rows=cursor.fetchall()
+#     result={}
+#     overall_total=0
+
+#     for category,subcategory,total in rows:
+#         category=category.lower()
+#         subcategory=(subcategory or "unknown").lower()
+
+#         if category not in result:
+#             result[category]={"total":0}
+
+#         result[category][subcategory]=total
+#         result[category]["total"]+=total
+#         overall_total+=total
+#     result["overall_total"]=overall_total
+#     top_count=0
+#     top_category=""
+#     for category,data in result.items():
+#         if category=="overall_total":
+#             continue
+#         if data["total"]>top_count:
+#             top_count=data["total"]
+#             top_category=category
+#     result["top_category"]={
+#         "category":top_category,
+#         "total":top_count
+#     }
+#     return result
+
 @mcp.tool()
 def get_expense_breakdown_by_category()->dict:
     """
-    Get total expenses grouped by category
-    Returns
-     Dictionary with category as key and total expense as value
+    "overall_total"
+        "top_category expense wise"
+        "top_10 categories "
+        "smallest_10 categories"
     """
     cursor.execute(
-        "SELECT category, SUM(price) FROM expenses GROUP BY LOWER (category)"
+        """
+        SELECT category,subcategory,SUM(price) as total FROM expenses GROUP BY LOWER (category), LOWER(subcategory)
+        ORDER BY total DESC
+        """
     )
+
     rows=cursor.fetchall()
     result={}
+    overall_total=0
 
-    for row in rows:
-        result[row[0]]=row[1]
-    
-    return result
+    for category,subcategory,total in rows:
+        category=category.lower()
+        subcategory=(subcategory or "unknown").lower()
+
+        if category not in result:
+            result[category]={"total":0}
+
+        result[category][subcategory]=total
+        result[category]["total"]+=total
+    overall_total = sum(data["total"] for data in result.values())
+    top_10=rows[:10]
+    bottom_10 = rows[-10:][::-1]
+    top_count=0
+    top_category=""
+    for category,data in result.items():
+        # if category=="overall_total":
+        #     continue
+        if data["total"]>top_count:
+            top_count=data["total"]
+            top_category=category
+    result["overall_total"]=overall_total
+    result["top_category"]={
+        "category":top_category,
+        "total":top_count,
+        "percentage_share":round(top_count/overall_total,2) if overall_total else 0
+    }
+
+    result["top_10"]=[
+        {
+            "category":c.lower(),
+            "subcategory":(s or "unknown").lower(),
+            "total":t
+        }
+        for c, s, t in top_10
+    ]
+    result["bottom_10"]=[
+        {
+            "category":c.lower(),
+            "subcategory":(s or "unknown").lower(),
+            "total":t
+        }
+        for c, s, t in bottom_10
+    ]
+    return {
+        "overall_total":result["overall_total"],
+        "top_category":result["top_category"],
+        "top_10":result["top_10"],
+        "bottom_10":result["bottom_10"]
+    }
 
 
 # @mcp.tool()
