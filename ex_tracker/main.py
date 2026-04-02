@@ -285,7 +285,7 @@ def get_category_breakdown_by_date_range(months_back: int):
         "data": result
     }
 
-@mcp.tool
+@mcp.tool()
 def get_last_n_days_breakdown(days: int):
     """
     Get expense breakdown in last n days
